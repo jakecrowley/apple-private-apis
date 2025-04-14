@@ -19,7 +19,7 @@ use tokio::sync::Mutex;
 #[cfg(feature = "remote-clearadi")]
 pub mod anisette_clearadi;
 
-#[cfg(feature = "remote-anisette-v3")]
+// #[cfg(feature = "remote-anisette-v3")]
 pub mod remote_anisette_v3;
 
 #[cfg(target_os = "macos")]
@@ -73,13 +73,13 @@ pub trait AnisetteProvider {
 
 // conditionally compile this
 #[cfg(not(target_os = "macos"))]
-pub type DefaultAnisetteProvider = ClearADIClient;
+pub type DefaultAnisetteProvider = remote_anisette_v3::AnisetteClient;
 #[cfg(not(target_os = "macos"))]
 pub fn default_provider(info: LoginClientInfo, path: PathBuf) -> ArcAnisetteClient<DefaultAnisetteProvider> {
-    Arc::new(Mutex::new(AnisetteClient::new(ClearADIClient {
-        login_info: info,
-        configuration_path: path
-    })))
+    Arc::new(Mutex::new(AnisetteClient::new(
+        remote_anisette_v3::AnisetteClient::new(DEFAULT_ANISETTE_URL_V3.to_string(), info)
+            .expect("Failed to create AnisetteClient")
+    )))
 }
 
 
@@ -91,7 +91,6 @@ pub fn default_provider(info: LoginClientInfo, path: PathBuf) -> ArcAnisetteClie
 }
 
 pub type ArcAnisetteClient<T> = Arc<Mutex<AnisetteClient<T>>>;
-
 
 pub struct AnisetteClient<T: AnisetteProvider> {
     provider: T,

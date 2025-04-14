@@ -18,7 +18,7 @@ use std::fmt::Write;
 use base64::Engine;
 use async_trait::async_trait;
 
-use crate::{anisette_headers_provider::AnisetteHeadersProvider, AnisetteError, LoginClientInfo};
+use crate::{AnisetteProvider, AnisetteError, LoginClientInfo};
 
 const APPLE_ROOT: &[u8] = include_bytes!("../../icloud-auth/src/apple_root.der");
 
@@ -118,7 +118,8 @@ impl AnisetteState {
 }
 pub struct AnisetteClient {
     login_info: LoginClientInfo,
-    url: String
+    url: String,
+    configuration_path: PathBuf
 }
 
 #[derive(Serialize)]
@@ -166,10 +167,11 @@ fn make_reqwest() -> Result<Client, AnisetteError> {
 }
 
 impl AnisetteClient {
-    pub async fn new(url: String, login_info: LoginClientInfo) -> Result<AnisetteClient, AnisetteError> {
+    pub fn new(url: String, login_info: LoginClientInfo) -> Result<AnisetteClient, AnisetteError> {
         Ok(AnisetteClient {
             login_info,
-            url
+            url,
+            configuration_path: PathBuf::default()
         })
     }
 
@@ -367,7 +369,6 @@ impl AnisetteClient {
     }
 }
 
-
 impl AnisetteProvider for AnisetteClient {
     async fn get_anisette_headers(&mut self) -> Result<HashMap<String, String>, AnisetteError> {
         fs::create_dir_all(&self.configuration_path)?;
@@ -387,7 +388,7 @@ impl AnisetteProvider for AnisetteClient {
             Ok(data) => data,
             Err(err) => {
                 if matches!(err, AnisetteError::AnisetteNotProvisioned) {
-                    state.provisioned = None;
+                    // state.provisioned = None;
                     self.provision(&mut state).await?;
                     plist::to_file_xml(config_path, &mut state)?;
                     self.get_headers(&state).await?

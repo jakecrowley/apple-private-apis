@@ -3,6 +3,7 @@
 */Cargo.lock
 Cargo.lock
 ignore_this_test.js
+*.vs/
 
 # IDE generated files
 .idea
