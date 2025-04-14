@@ -9,21 +9,21 @@ pub struct XcodeSession {
 }
 
 impl XcodeSession {
-    pub fn with(account: &AppleAccount) -> XcodeSession {
-        // let spd = account.spd.as_ref().unwrap();
-        // // println!("spd: {:#?}", spd);
-        // let dsid = spd.get("adsid").unwrap().as_string().unwrap();
-        // let auth_token = spd.get("GsIdmsToken").unwrap().as_string().unwrap();
+    // pub fn with(account: &AppleAccount) -> XcodeSession {
+    //     // let spd = account.spd.as_ref().unwrap();
+    //     // // println!("spd: {:#?}", spd);
+    //     // let dsid = spd.get("adsid").unwrap().as_string().unwrap();
+    //     // let auth_token = spd.get("GsIdmsToken").unwrap().as_string().unwrap();
 
-        // let sk = spd.get("sk").unwrap().as_data().unwrap();
-        // let c = spd.get("c").unwrap().as_data().unwrap();
-        // println!("adsid: {}", dsid);
-        // println!("GsIdmsToken: {}", auth_token);
-        // // println!("spd: {:#?}", spd);
-        // println!("sk: {:#?}", sk);
-        // println!("c: {:#?}", c);
+    //     // let sk = spd.get("sk").unwrap().as_data().unwrap();
+    //     // let c = spd.get("c").unwrap().as_data().unwrap();
+    //     // println!("adsid: {}", dsid);
+    //     // println!("GsIdmsToken: {}", auth_token);
+    //     // // println!("spd: {:#?}", spd);
+    //     // println!("sk: {:#?}", sk);
+    //     // println!("c: {:#?}", c);
 
-        //TODO: use apptoken func from account
-        todo!()
-    }
+    //     //TODO: use apptoken func from account
+    //     todo!()
+    // }
 }
