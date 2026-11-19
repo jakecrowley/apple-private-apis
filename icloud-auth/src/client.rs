@@ -695,7 +695,11 @@ impl<T: AnisetteProvider> AppleAccount<T> {
             "Content-Type",
             HeaderValue::from_str("text/x-xml-plist").unwrap(),
         );
-        gsa_headers.insert("Accept", HeaderValue::from_str("*/*").unwrap());
+        gsa_headers.insert("Accept", HeaderValue::from_str("text/x-xml-plist").unwrap());
+        // sidesign/sideinstaller gsa parity: xcode auth context headers
+        gsa_headers.insert("X-Xcode-Version", HeaderValue::from_str("27.0 (27A5218g)").unwrap());
+        gsa_headers.insert("X-Apple-App-Info", HeaderValue::from_str("com.apple.gs.xcode.auth").unwrap());
+        gsa_headers.insert("Connection", HeaderValue::from_str("close").unwrap());
         gsa_headers.extend(valid_anisette.get_gsservice_headers().into_iter().map(|(a, b)| (HeaderName::from_str(&a).unwrap(), HeaderValue::from_str(&b).unwrap())));
 
         let request_id = Uuid::new_v4().to_string().to_uppercase();
@@ -720,17 +724,34 @@ impl<T: AnisetteProvider> AppleAccount<T> {
         plist::to_writer_xml(&mut buffer, &packet)?;
         let buffer = String::from_utf8(buffer).unwrap();
 
-        // println!("{:?}", gsa_headers.clone());
+        println!("SRP INIT REQUEST HEADERS: {:?}", gsa_headers.clone());
         // println!("{:?}", buffer);
 
-        let res = self
+        let mut res = self
             .client
             .post(GSA_ENDPOINT)
             .headers(gsa_headers.clone())
             .body(buffer)
             .send().await;
 
-        let res = parse_response(res).await?;
+        // oct 2026: apple sometimes serves a bare html page (rate limit / bot detection)
+        // instead of the plist response. retry once after a short delay
+        let mut parsed = parse_response(res).await;
+        if parsed.is_err() {
+            warn!("gsa srp init got a non-plist response, retrying once");
+            tokio::time::sleep(Duration::from_millis(2000)).await;
+            let mut buffer = Vec::new();
+            plist::to_writer_xml(&mut buffer, &packet)?;
+            let buffer = String::from_utf8(buffer).unwrap();
+            res = self
+                .client
+                .post(GSA_ENDPOINT)
+                .headers(gsa_headers.clone())
+                .body(buffer)
+                .send().await;
+            parsed = parse_response(res).await;
+        }
+        let res = parsed?;
         let err_check = Self::check_error(&res);
         if err_check.is_err() {
             return Err(err_check.err().unwrap());

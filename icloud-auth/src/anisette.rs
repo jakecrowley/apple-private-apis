@@ -18,18 +18,14 @@ impl AnisetteData {
 
     pub fn get_gsservice_headers(&self) -> HashMap<String, String> {
         // user must supply, content-type and accept
-        // unaccounted headers: Accept-Encoding, Connection, Host
-        const ACCEPTABLE_HEADERS: &[&'static str] = &["X-Apple-I-MD-LU", "X-Apple-I-MD-RINFO", "X-Apple-I-MD-M", "X-Apple-I-MD", "X-Mme-Device-Id"];
-        self.base_headers.clone().into_iter().filter(|(key, _)| ACCEPTABLE_HEADERS.contains(&key.as_str()))
-            .chain([
-                ("X-Apple-AK-Context-Type", self.client_info.ak_context_type.as_str()),
-                ("X-Apple-Client-App-Name", &self.client_info.client_app_name),
-                ("X-Apple-I-Client-Bundle-Id", &self.client_info.client_bundle_id),
+        // oct 2026 grand slam break: verified working implementations (isideload/iload, sidestore
+        // sidesign) send only the client info + user agent here. extra context headers
+        // (imessage context type, capp/cbid, md headers on the request) accompany -80045,
+        // the md data belongs in the cpd dictionary instead
+        [
                 ("X-MMe-Client-Info", &self.client_info.mme_client_info_akd),
-                ("Accept-Language", "en-US,en;q=0.9"),
                 ("User-Agent", &self.client_info.akd_user_agent),
-            ].into_iter().map(|(a, b)| (a.to_string(), b.to_string())))
-        .collect()
+            ].into_iter().map(|(a, b)| (a.to_string(), b.to_string())).collect()
     }
 
     pub fn get_postdata_headers(&self) -> HashMap<String, String> {
@@ -108,43 +104,24 @@ impl AnisetteData {
         .collect()
     }
 
-    pub fn get_cpd_data(&self, request: &str) -> Dictionary {
-        const ACCEPTABLE_HEADERS: &[&'static str] = &[
-            "X-Apple-I-Client-Time",
-            "X-Apple-I-MD",
-            "X-Apple-I-MD-LU",
-            "X-Apple-I-MD-M",
-            "X-Apple-I-MD-RINFO",
-            "X-Mme-Device-Id",
-        ];
+    pub fn get_cpd_data(&self, _request: &str) -> Dictionary {
+        // oct 2026 grand slam break: verified working implementations (isideload/iload, which
+        // still log in as of late oct 2026) send a minimal cpd dictionary. the rich dictionary
+        // rustpush previously sent (context keys, request uuid, serial, extra booleans)
+        // accompanies -80045, so match the known-good set exactly
+        const ACCEPTABLE_HEADERS: &[&'static str] = &["X-Mme-Device-Id", "X-Apple-I-MD", "X-Apple-I-MD-M"];
         self.base_headers.clone().into_iter().filter(|(key, _)| ACCEPTABLE_HEADERS.contains(&key.as_str()))
             .map(|(a, b)| (a, Value::String(b)))
-            .chain(self.client_info.push_token.as_ref().map(|v| ("ptkn".to_string(), Value::String(v.clone()))).into_iter())
             .chain([
-                ("X-Apple-I-Device-Configuration-Mode", "0"),
-                ("X-Apple-I-Request-UUID", request),
-                ("X-Apple-Requested-Partition", "0"),
-                ("X-Apple-Security-Upgrade-Context", "com.apple.authkit.generic"),
-                ("capp", &self.client_info.client_app_name),
-                ("cbid", &self.client_info.client_bundle_id),
-                ("cou", "US"),
-                ("loc", "en_US"),
-                ("svct", &self.client_info.ak_context_type),
-                
-            ].into_iter().map(|(a, b)| (a.to_string(), Value::String(b.to_string()))))
-            .chain([
-                ("X-Apple-Offer-Security-Upgrade", Value::Boolean(true)),
-                ("at", Value::Integer(0.into())),
                 ("bootstrap", Value::Boolean(true)),
-                ("ckgen", Value::Boolean(true)),
-                ("fcd", Value::Boolean(true)),
-                ("icdrsDisabled", Value::Boolean(false)),
                 ("icscrec", Value::Boolean(true)),
+                ("loc", Value::String("en_US".to_string())),
                 ("pbe", Value::Boolean(false)),
                 ("prkgen", Value::Boolean(true)),
-                ("webAccessEnabled", Value::Boolean(false)),
-            ].into_iter().map(|(a, b)| (a.to_string(), b))
-        ).chain(self.client_info.hardware_headers.clone().into_iter().map(|(a, b)| (a, Value::String(b)))).collect()
+                // isideload verified working value; rustpush previously sent the ak context type ("imessage")
+                ("svct", Value::String("iCloud".to_string())),
+            ].into_iter().map(|(a, b)| (a.to_string(), b)))
+        .collect()
     }
 
     pub fn get_extra_headers(&self) -> HashMap<String, String> {
